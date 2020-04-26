@@ -596,7 +596,7 @@ if(USE_FBGEMM)
   caffe2_update_option(USE_FBGEMM ON)
 else()
   caffe2_update_option(USE_FBGEMM OFF)
-  message(WARNING 
+  message(WARNING
     "Turning USE_FAKELOWP off as it depends on USE_FBGEMM.")
   caffe2_update_option(USE_FAKELOWP OFF)
 endif()
@@ -1552,3 +1552,28 @@ endif()
 #
 # End ATen checks
 #
+
+# Override install location of `fmt` libs.
+#
+# `fmt` uses CMAKE_INSTALL_LIBDIR to determine where to put libraries. PyTorch
+# somewhat misbehaves and installs everything to TORCH_INSTALL_LIB_DIR. For
+# consistency, make `fmt` do the same thing by temporarily overriding
+# CMAKE_INSTALL_LIBDIR.
+set(OLD_CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR})
+set(CMAKE_INSTALL_LIBDIR ${TORCH_INSTALL_LIB_DIR})
+
+set(FMT_INSTALL ON CACHE BOOL " " FORCE)
+add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/fmt)
+
+set(CMAKE_INSTALL_LIBDIR ${OLD_CMAKE_INSTALL_LIBDIR})
+
+# Disable compiler feature checks for `fmt`.
+#
+# CMake compiles a little program to check compiler features. Some of our build
+# configurations (notably the mobile build analyzer) will populate
+# CMAKE_CXX_FLAGS in ways that break feature checks. Since we already know
+# `fmt` is compatible with a superset of the compilers that PyTorch is, it
+# shouldn't be too bad to just disable the checks.
+set_target_properties(fmt PROPERTIES INTERFACE_COMPILE_FEATURES "")
+
+list(APPEND Caffe2_DEPENDENCY_LIBS fmt::fmt)
